@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoGenesis - Buyurtmani Boshqarish</title>
+    <!-- Telegram Web App rasmiy skripti -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #ffffff);
+            --text-color: var(--tg-theme-text-color, #000000);
+            --secondary-bg: var(--tg-theme-secondary-bg-color, #f1f1f1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: var(--secondary-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h2 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        p {
+            font-size: 15px;
+            color: #666;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            margin-bottom: 12px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 8px;
+            color: white;
+            transition: opacity 0.2s;
+        }
+
+        button:active {
+            opacity: 0.8;
+        }
+
+        .btn-success { background-color: #2ecc71; }
+        .btn-danger { background-color: #e74c3c; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>GoGenesis Bot</h2>
+        <p id="statusText">Iltimos kuting, xabar yuborilmoqda...</p>
+        
+        <!-- Agar startapp parametri orqali kelmasa, qo'lda kiritish uchun qism -->
+        <div id="manualBox" style="display: none; margin-top: 20px;">
+            <input type="number" id="manualChatId" placeholder="Foydalanuvchi ID raqami">
+            <button class="btn-success" onclick="sendNotification('c', document.getElementById('manualChatId').value)">✅ Tasdiqlash (C)</button>
+            <button class="btn-danger" onclick="sendNotification('i', document.getElementById('manualChatId').value)">❌ Rad etish (I)</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const token = "8867570993:AAEp5T0rMDzaQxznDosZ4IQk65TjTAx2GBA";
+
+        // Havola oxiridagi start_param ni o'qish (Masalan: c12313132123)
+        const startParam = tg.initDataUnsafe?.start_param;
+
+        if (startParam) {
+            const type = startParam.charAt(0); // 'c' yoki 'i'
+            const chatId = startParam.slice(1); // ID raqam
+
+            if (chatId && (type === 'c' || type === 'i')) {
+                sendNotification(type, chatId);
+            } else {
+                document.getElementById('statusText').innerText = "Xatolik: Parametr formati noto'g'ri!";
+            }
+        } else {
+            // Agar to'g'ridan-to'g'ri ochilgan bo'lsa, ID kiritish maydonini ko'rsatish
+            document.getElementById('statusText').innerText = "Foydalanuvchi ID raqamini kiriting:";
+            document.getElementById('manualBox').style.display = 'block';
+        }
+
+        // Xabar va stikerni avtomatik yuborish funksiyasi
+        async function sendNotification(type, chatId) {
+            if (!chatId) {
+                alert("Iltimos, ID raqamni kiriting!");
+                return;
+            }
+
+            document.getElementById('statusText').innerText = "Yuborilmoqda...";
+            document.getElementById('manualBox').style.display = 'none';
+
+            let stickerId, messageText;
+
+            if (type === 'c') {
+                stickerId = "CAACAgIAAxkBAAER1fBqmGHdZ1cgyeNYWTTHdknnBVJwfAACL6EAAjY6wUicCG6wcRtMoj0E";
+                messageText = "Sizning chekingiz qabul qilindi va buyurtmagiz pochtaga topshirildi ✅ Yordam uchun @gogenesis_support_bot";
+            } else {
+                stickerId = "CAACAgIAAxkBAAER1e5qmGFEQT_cLKbb_QdYeQqFntnkFwACrZwAAr0rwUg8scTygAw4KD0E";
+                messageText = "Sizning chekingiz qabul qilinmadi va buyurtmagiz pochtaga topshirilmadi ❌ Yordam uchun @gogenesis_support_bot";
+            }
+
+            try {
+                // 1. Stikerni yuborish
+                await fetch(`https://api.telegram.org/bot${token}/sendSticker?chat_id=${chatId}&sticker=${stickerId}`);
+                
+                // 2. Matnli xabarni yuborish
+                await fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(messageText)}`);
+
+                // 3. Muvaffaqiyatli bajarilgach adminga bildirish va vibratsiya
+                tg.HapticFeedback.notificationOccurred('success');
+                alert("Foydalanuvchiga xabar yetkazildi ✅");
+
+                // 4. Mini App'ni avtomatik yopish
+                tg.close();
+
+            } catch (error) {
+                console.error(error);
+                alert("Xatolik yuz berdi! Tarmoqni tekshiring.");
+                document.getElementById('statusText').innerText = "Xatolik yuz berdi.";
+            }
+        }
+    </script>
+</body>
+</html>
